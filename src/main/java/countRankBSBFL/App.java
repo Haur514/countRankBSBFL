@@ -14,9 +14,9 @@ import java.nio.file.Files;
 public class App {
 
     private final String base = "C:/Users/h-yosiok/Lab/aggregateSpecSusp/spectrum/";
-    private static String mathNum;
-    private static int bugLineNum;
-    private static String fileName;
+    private String mathNum;
+    private int bugLineNum;
+    private String fileName;
     private String directory;
 
     /**
@@ -25,13 +25,44 @@ public class App {
      * @param args
      */
     public static void main(String[] args) {
-        System.out.println(args[0]);
-        System.out.println(args[1]);
-        System.out.println(args[2]);
-        mathNum = args[0];
-        bugLineNum = Integer.parseInt(args[1]);
-        fileName = args[2];
-        new App().run();
+        new App().invoke();
+    }
+
+    private void invoke() {
+        fileInit();
+        List<String> faultDataList = readFaultData();
+        for (String faultData : faultDataList) {
+            String[] seg = faultData.split(" ");
+            mathNum = seg[0];
+            bugLineNum = Integer.parseInt(seg[1]);
+            fileName = seg[2];
+            run();
+        }
+
+    }
+
+    private void fileInit() {
+        FileWriter fw = null;
+        PrintWriter out = null;
+        try {
+            String path = "./sample.txt";
+            fw = new FileWriter(path, false);
+            out = new PrintWriter(fw);
+            out.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (out != null) {
+                out.close();
+            }
+            if (fw != null) {
+                try {
+                    fw.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 
     public void run() {
@@ -45,7 +76,7 @@ public class App {
     }
 
     private void writeToFile(int rankSBFL, int rankBSBFL) {
-        if (rankBSBFL == -1) {
+        if (rankSBFL == -1) {
             return;
         }
         FileWriter fw = null;
@@ -99,6 +130,21 @@ public class App {
         }
         if (text.isEmpty()) {
             System.out.println("There is no data in " + base + mathNum + "/" + fileName);
+        }
+        return text;
+    }
+
+    private List<String> readFaultData() {
+        Path file = Paths.get("./faultData.txt");
+        List<String> text;
+        try {
+            text = Files.readAllLines(file);
+        } catch (IOException e) {
+            text = null;
+            e.printStackTrace();
+        }
+        if (text.isEmpty()) {
+            System.out.println("There is no data in faultData");
         }
         return text;
     }
