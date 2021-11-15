@@ -19,6 +19,10 @@ public class App {
     private String fileName;
     private String directory;
 
+    private int equal = 0;
+    private int notRecognizeSBFL = 0;
+    private int allLines = 0;
+
     /**
      * 使い方： 第一引数： math??? 第二引数： バグを持っている行番号 第三引数： ファイル名
      * 
@@ -38,7 +42,7 @@ public class App {
             fileName = seg[2];
             run();
         }
-
+        writeFile(allLines, notRecognizeSBFL, equal);
     }
 
     private void fileInit() {
@@ -68,15 +72,25 @@ public class App {
     public void run() {
         int rankSBFL;
         int rankBSBFL;
+        int rankNonBSBFL;
         List<String> text = readTRText("SBFL.txt");
         rankSBFL = check(text);
         text = readTRText("BSBFL.txt");
         rankBSBFL = check(text);
-        writeToFile(rankSBFL, rankBSBFL);
+        text = readTRText("NonBSBFL.txt");
+        rankNonBSBFL = check(text);
+        writeToFile(rankSBFL, rankNonBSBFL, rankBSBFL);
     }
 
-    private void writeToFile(int rankSBFL, int rankBSBFL) {
+    private void writeToFile(int rankSBFL, int rankNonBSBFL, int rankBSBFL) {
+        allLines += 1;
         if (rankSBFL == -1) {
+            equal += 1;
+            notRecognizeSBFL += 1;
+            return;
+        }
+        if (rankSBFL == rankBSBFL && rankSBFL == rankNonBSBFL) {
+            equal += 1;
             return;
         }
         FileWriter fw = null;
@@ -87,7 +101,34 @@ public class App {
             out = new PrintWriter(fw);
             out.print('"' + fileName + '"' + ",");
             out.print('"' + Integer.toString(rankSBFL) + '"' + ",");
-            out.println('"' + Integer.toString(rankBSBFL) + '"' + ",");
+            out.print('"' + Integer.toString(rankNonBSBFL) + '"' + ",");
+            out.print('"' + Integer.toString(rankBSBFL) + '"' + ",");
+            out.println('"' + mathNum + '"');
+            out.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (out != null) {
+                out.close();
+            }
+            if (fw != null) {
+                try {
+                    fw.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    private void writeFile(int all, int rec, int equal) {
+        FileWriter fw = null;
+        PrintWriter out = null;
+        try {
+            String path = "./sample.txt";
+            fw = new FileWriter(path, true);
+            out = new PrintWriter(fw);
+            out.println(all + " " + rec + " " + equal);
             out.flush();
         } catch (IOException e) {
             e.printStackTrace();
