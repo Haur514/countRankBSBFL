@@ -13,22 +13,30 @@ import java.nio.file.Files;
 
 public class App {
 
-    private final String base = "C:/Users/h-yosiok/Lab/aggregateSpecSusp/spectrum/";
+    private static String base = "/Users/h-yosiok/Lab/aggregateSpecSusp/spectrum/";
     private String mathNum;
     private int bugLineNum;
     private String fileName;
+    private int linesThatBSBFLwinSBFL = 0;
     private String directory;
+
+    private int lineNumFailedTestCasePassed;
 
     private int equal = 0;
     private int notRecognizeSBFL = 0;
     private int allLines = 0;
+    private static String threshold;
+    private static int weightType;
+    private String[] weightFunctionName = {"Haruka","Yoshiruka","Ruka","Haru","Haka", "Yoruka","Senko","YoshiokaHaruka","functionC"};
 
-    /**
-     * 使い方： 第一引数： math??? 第二引数： バグを持っている行番号 第三引数： ファイル名
-     * 
-     * @param args
-     */
     public static void main(String[] args) {
+        weightType = Integer.parseInt(args[0]);
+        threshold = args[1];
+        StringBuffer buf = new StringBuffer();
+        buf.append(base);
+        buf.append(args[2]);
+        buf.append("/");
+        base = buf.toString();
         new App().invoke();
     }
 
@@ -42,8 +50,37 @@ public class App {
             fileName = seg[2];
             run();
         }
-        writeFile(allLines, notRecognizeSBFL, equal);
     }
+
+    /**
+     * FAILしたテストケース全体が通った行番号を，重複を許さずに数え上げる．
+     * SBFLでランキングしたテキストファイルを，行ごとに分割したリストを引数に与える．
+     */
+    public int countLineNumFailedTestCasePassed(List<String> text){
+        int lineNum = 0;
+        for(String s:text){
+            String[] seg = s.split(" ");
+            if(!seg[2].equals("0.0")){
+                lineNum++;
+            }else{
+                break;
+            }
+        }
+        return lineNum;
+    }
+
+    public void run() {
+        int rankSBFL,rankBSBFL,rankNonBSBFL;
+        List<String> text = readTRText("SBFL");
+        lineNumFailedTestCasePassed = countLineNumFailedTestCasePassed(text);
+        rankSBFL = checkRank(text);
+        text = readTRText("BSBFL");
+        rankBSBFL = checkRank(text);
+        text = readTRText("NonBSBFL");
+        rankNonBSBFL = checkRank(text);
+        writeToFile(rankSBFL, rankNonBSBFL, rankBSBFL);
+    }
+
 
     private void fileInit() {
         FileWriter fw = null;
@@ -52,6 +89,7 @@ public class App {
             String path = "./sample.txt";
             fw = new FileWriter(path, false);
             out = new PrintWriter(fw);
+            out.println("filename,SBFL,NonBSBFL,BSBFL,Project,numOfLinesFailedTestPassed");
             out.flush();
         } catch (IOException e) {
             e.printStackTrace();
@@ -69,30 +107,18 @@ public class App {
         }
     }
 
-    public void run() {
-        int rankSBFL;
-        int rankBSBFL;
-        int rankNonBSBFL;
-        List<String> text = readTRText("SBFL.txt");
-        rankSBFL = check(text);
-        text = readTRText("BSBFL.txt");
-        rankBSBFL = check(text);
-        text = readTRText("NonBSBFL.txt");
-        rankNonBSBFL = check(text);
-        writeToFile(rankSBFL, rankNonBSBFL, rankBSBFL);
-    }
 
     private void writeToFile(int rankSBFL, int rankNonBSBFL, int rankBSBFL) {
         allLines += 1;
+        if(rankSBFL > rankBSBFL){
+            linesThatBSBFLwinSBFL++;
+        }
         if (rankSBFL == -1) {
             equal += 1;
             notRecognizeSBFL += 1;
             return;
         }
-        if (rankSBFL == rankBSBFL && rankSBFL == rankNonBSBFL) {
-            equal += 1;
-            return;
-        }
+
         FileWriter fw = null;
         PrintWriter out = null;
         try {
@@ -103,7 +129,8 @@ public class App {
             out.print('"' + Integer.toString(rankSBFL) + '"' + ",");
             out.print('"' + Integer.toString(rankNonBSBFL) + '"' + ",");
             out.print('"' + Integer.toString(rankBSBFL) + '"' + ",");
-            out.println('"' + mathNum + '"');
+            out.print('"' + mathNum + '"' + ",");
+            out.println('"' + Integer.toString(lineNumFailedTestCasePassed) + '"');
             out.flush();
         } catch (IOException e) {
             e.printStackTrace();
@@ -146,14 +173,30 @@ public class App {
         }
     }
 
-    private int check(List<String> text) {
+    private int checkRank(List<String> text) {
         for (int i = 0; i < text.size(); i++) {
             String line = text.get(i);
             String[] segment = line.split(" ");
+            if(segment[2].equals("NaN")){
+                System.err.println("NaN");
+                System.out.println(mathNum);
+                System.exit(1);
+            }
+            if(segment[2].equals("0.0")){
+                return -1;
+            }
             int num = Integer.parseInt(segment[0]);
             if (bugLineNum == num) {
                 if (segment[1].contains(fileName)) {
-                    return i + 1;
+                    double susp = Double.parseDouble(segment[2]);
+                    for(int j = i; j < text.size();j++){
+                        String l = text.get(j);
+                        String[] s = l.split(" ");
+                        if(susp != Double.parseDouble(s[2])){
+                            return j;
+                        }
+                    }
+                    return text.size();
                 }
             }
         }
@@ -161,7 +204,12 @@ public class App {
     }
 
     private List<String> readTRText(String fileName) {
-        Path file = Paths.get(base + mathNum + "/" + fileName);
+        Path file;
+        if(fileName.equals("SBFL")){
+            file = Paths.get(base + mathNum + "/" + weightFunctionName[weightType] + "/SBFL.txt");
+        }else{
+            file = Paths.get(base + mathNum + "/" + weightFunctionName[weightType] + "/"+fileName+threshold+".txt");
+        }
         List<String> text;
         try {
             text = Files.readAllLines(file);
